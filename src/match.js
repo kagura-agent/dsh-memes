@@ -2,7 +2,11 @@
 
 export const DEFAULT_REPO = "kagura-agent/memes";
 export const DEFAULT_REVISION = "f360607ccdb774a8b37fdf9779e58c86abd59535";
-export const RAW_PREFIX = `https://raw.githubusercontent.com/${DEFAULT_REPO}/${DEFAULT_REVISION}`;
+// The memes repo stores images as Git LFS objects. raw.githubusercontent.com
+// serves the LFS pointer text ("version https://git-lfs.github.com/spec/v1…"),
+// NOT the image bytes — a client <img src> would render the pointer as text.
+// media.githubusercontent.com/media resolves the LFS object to real bytes.
+export const RAW_PREFIX = `https://media.githubusercontent.com/media/${DEFAULT_REPO}/${DEFAULT_REVISION}`;
 
 /** Stable category list, shown in the tool description. */
 export const CATEGORIES = [

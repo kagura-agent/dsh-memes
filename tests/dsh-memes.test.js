@@ -49,7 +49,7 @@ test("matchMemes: exact category hit", () => {
   assert.equal(r.length, 2);
   assert.equal(r[0].matchedBy, "category");
   assert.ok(r.every((m) => m.category === "facepalm"));
-  assert.ok(r[0].url.startsWith("https://raw.githubusercontent.com/"));
+  assert.ok(r[0].url.startsWith("https://media.githubusercontent.com/media/"));
 });
 
 test("matchMemes: multi-token tag hit (frieren cringe)", () => {
@@ -112,8 +112,9 @@ test("CATEGORIES: every fixture category is declared", () => {
   }
 });
 
-test("RAW_PREFIX pins a revision (not a branch)", () => {
-  assert.match(RAW_PREFIX, /raw\.githubusercontent\.com\/kagura-agent\/memes\/[0-9a-f]{40}/);
+test("RAW_PREFIX pins a revision and uses media host (LFS-safe)", () => {
+  assert.match(RAW_PREFIX, /media\.githubusercontent\.com\/media\/kagura-agent\/memes\/[0-9a-f]{40}/);
+  assert.ok(!RAW_PREFIX.includes("raw.githubusercontent.com"), "raw host serves LFS pointers, not bytes");
 });
 
 // ---- network.js: validateTags ----
