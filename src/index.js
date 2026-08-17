@@ -12,13 +12,17 @@
 import { createTagsStore } from "./network.js";
 import { createPickMemeTool } from "./tool.js";
 import { RAW_PREFIX } from "./match.js";
+import z from "@deepseek-ai/schemastery";
 
 export const name = "dsh-memes";
 
-/** Optional config: override the tags.json URL (mostly for testing/mirrors). */
-export const Config = {
-  tagsUrl: { type: "string" },
-};
+/**
+ * Optional config: override the tags.json URL (mostly for testing/mirrors).
+ * Must be a Schemastery schema (Standard Schema `~standard` protocol) —
+ * Cordis calls Config['~standard'].validate(config) at load; a plain object
+ * crashes the plugin before it ever runs.
+ */
+export const Config = z.object({ tagsUrl: z.string() });
 
 function apply(ctx, config = {}) {
   const tools = ctx.get("tools");

@@ -27,5 +27,8 @@
   "devDependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
   }
 }

@@ -279,3 +279,38 @@ test("index.js loads and exports name/apply", async () => {
   assert.equal(mod.name, "dsh-memes");
   assert.equal(typeof mod.apply, "function");
 });
+
+// ---- Config must be a Schemastery schema (Standard Schema ~standard) ----
+// Cordis calls runtime.Config['~standard'].validate(config) at plugin load
+// (vendor/cordis/src/fiber.ts resolveConfig). A plain object has no
+// `~standard`, so the plugin crashes before apply() ever runs.
+
+test("Config is a Schemastery schema exposing ~standard.validate", async () => {
+  const mod = await import("../src/index.js");
+  assert.ok(mod.Config, "Config must be exported");
+  assert.equal(typeof mod.Config, "function", "must be a schema (z.object), not a plain object");
+  assert.ok(mod.Config["~standard"], "schema must expose the Standard Schema ~standard protocol");
+  assert.equal(typeof mod.Config["~standard"].validate, "function");
+});
+
+test("Config validates: empty config passes (all fields optional)", async () => {
+  const mod = await import("../src/index.js");
+  const result = mod.Config["~standard"].validate({});
+  assert.equal(result.issues, undefined);
+  assert.deepEqual(result.value, {});
+});
+
+test("Config validates: valid tagsUrl passes", async () => {
+  const mod = await import("../src/index.js");
+  const result = mod.Config["~standard"].validate({ tagsUrl: "https://example.com/tags.json" });
+  assert.equal(result.issues, undefined);
+  assert.deepEqual(result.value, { tagsUrl: "https://example.com/tags.json" });
+});
+
+test("Config validates: wrong type reports issues (does not throw)", async () => {
+  const mod = await import("../src/index.js");
+  const result = mod.Config["~standard"].validate({ tagsUrl: 42 });
+  assert.ok(result.issues, "expected validation issues");
+  assert.ok(result.issues.length >= 1);
+  assert.match(result.issues[0].message, /tagsUrl/);
+});

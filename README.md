@@ -3,7 +3,7 @@
 <p align="center">
   <strong>Meme plugin for DeepSeek Harness — 没有表情包的 agent 是没有灵魂的</strong><br/>
   <a href="https://badgen.net/badge/license/MIT/green"><img src="https://badgen.net/badge/license/MIT/green" alt="license" /></a>
-  <a href="https://badgen.net/badge/tests/38%20passing/green"><img src="https://badgen.net/badge/tests/38%20passing/green" alt="tests" /></a>
+  <a href="https://badgen.net/badge/tests/42%20passing/green"><img src="https://badgen.net/badge/tests/42%20passing/green" alt="tests" /></a>
 </p>
 
 给 DSH agent 一个 `pick_meme` 工具：当对话需要情绪表达时，agent 直接调用，从
@@ -79,7 +79,7 @@ src/
 ├── network.js    # 远程资源层：tags.json 获取 + 校验 + 缓存
 └── client.js     # Web Client：pick_meme 专用 Tool View（<img> 渲染）
 tests/
-├── dsh-memes.test.js   # 26 个 host 测试（匹配/校验/缓存/超时/并发），node:test 零依赖
+├── dsh-memes.test.js   # 30 个 host 测试（匹配/校验/缓存/超时/并发/Config schema），node:test
 └── client.test.js      # 12 个 client 测试（真实 React 渲染 + DSH block 结构），react 19
 ```
 
