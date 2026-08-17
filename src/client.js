@@ -19,13 +19,13 @@
 // pointer text, not image bytes).
 
 window.__ModuleLoader__.load({
-  id: "dsh-memes-client",
+  id: "dsh-memes",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
     var react = require("react");
 
-    var name = "dsh-memes-client";
+    var name = "dsh-memes";
     var inject = ["slots"];
 
     var NS = "dsh-memes";
@@ -100,60 +100,28 @@ window.__ModuleLoader__.load({
       return matchesFromContent(block.content);
     }
 
-    /**
-     * MemeRow: renders the pick_meme call as a compact card — title line with
-     * the matched mood, then the returned GIFs as <img> grid. Running calls
-     * show the title alone; settled calls show the images.
-     */
+    /** Render a settled result as reaction images without exposing tool UI. */
     function MemeRow(props) {
-      var toolName = props.toolName;
       var block = props.block;
-
       var matches = extractMatches(block);
-      var settled = isSettled(block);
-
-      var titleText = toolName || "pick_meme";
-      var summaryText = settled && matches.length > 0
-        ? matches.length + " meme" + (matches.length === 1 ? "" : "s") + " matched"
-        : "picking memes…";
-
-      var children = [];
-      if (settled && matches.length > 0) {
-        var grid = react.createElement(
-          "div",
-          { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px", padding: "8px 0" } },
-          matches.map(function (m, i) {
-            return react.createElement(
-              "div",
-              { key: i, style: { textAlign: "center" } },
-              react.createElement("img", {
-                src: m.url,
-                alt: m.file || "meme",
-                title: m.file || m.url,
-                style: { maxWidth: "100%", maxHeight: "180px", borderRadius: "8px", display: "block", margin: "0 auto" },
-                loading: "lazy",
-              })
-            );
-          })
-        );
-        children.push(grid);
-      }
+      if (matches.length === 0) return null;
 
       return react.createElement(
         "div",
-        { style: { border: "1px solid var(--dsw-alias-border-l1, #e2e6ec)", borderRadius: "10px", padding: "8px 12px", margin: "4px 0", background: "var(--dsw-alias-bg-layer-1, #ffffff)" } },
-        react.createElement(
-          "div",
-          { style: { display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "13px" } },
-          react.createElement("span", { "aria-hidden": true }, "🎭"),
-          react.createElement("span", null, titleText),
-          react.createElement(
-            "span",
-            { style: { fontWeight: 400, color: "var(--dsw-alias-label-secondary, #5a6472)" } },
-            summaryText
-          )
-        ),
-        children.length > 0 ? children[0] : null
+        {
+          "aria-label": "Meme reaction",
+          style: { display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "flex-start", width: "fit-content", maxWidth: "100%", margin: "4px 0" },
+        },
+        matches.map(function (m, i) {
+          return react.createElement("img", {
+            key: i,
+            src: m.url,
+            alt: m.file || "Meme reaction",
+            title: m.file || m.url,
+            style: { maxWidth: "min(360px, 100%)", maxHeight: "360px", width: "auto", height: "auto", borderRadius: "8px", display: "block" },
+            loading: "lazy",
+          });
+        })
       );
     }
 

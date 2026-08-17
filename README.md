@@ -3,7 +3,7 @@
 <p align="center">
   <strong>Meme plugin for DeepSeek Harness — 没有表情包的 agent 是没有灵魂的</strong><br/>
   <a href="https://badgen.net/badge/license/MIT/green"><img src="https://badgen.net/badge/license/MIT/green" alt="license" /></a>
-  <a href="https://badgen.net/badge/tests/42%20passing/green"><img src="https://badgen.net/badge/tests/42%20passing/green" alt="tests" /></a>
+  <a href="https://badgen.net/badge/tests/45%20passing/green"><img src="https://badgen.net/badge/tests/45%20passing/green" alt="tests" /></a>
 </p>
 
 给 DSH agent 一个 `pick_meme` 工具：当对话需要情绪表达时，agent 直接调用，从
@@ -21,10 +21,16 @@ tags.json 语义匹配资产接进来，让 DSH agent 能像人一样用图表�
 **无需手动编辑 cordis.patch.yml**：
 
 ```sh
-dsh plugin --profile web add /path/to/dsh-memes
+dsh plugin --profile web add link:/path/to/dsh-memes
 ```
 
-配置 HMR 实时生效，无需重启。
+`link:` 保留到本地 checkout 的引用，方便继续修改和测试。配置 HMR 实时生效；修改
+Host 或 Client JavaScript 后重启正在运行的 profile。
+
+```sh
+npm install
+npm test
+```
 
 ## 使用
 
@@ -79,7 +85,7 @@ src/
 ├── network.js    # 远程资源层：tags.json 获取 + 校验 + 缓存
 └── client.js     # Web Client：pick_meme 专用 Tool View（<img> 渲染）
 tests/
-├── dsh-memes.test.js   # 30 个 host 测试（匹配/校验/缓存/超时/并发/Config schema），node:test
+├── dsh-memes.test.js   # 33 个 host 测试（匹配/校验/缓存/超时/并发/DSH schema），node:test
 └── client.test.js      # 12 个 client 测试（真实 React 渲染 + DSH block 结构），react 19
 ```
 
@@ -95,7 +101,7 @@ tests/
 ## License 设计
 
 插件本身 **零版权字节**：图片不内嵌，全部运行时从 memes repo 通过
-`raw.githubusercontent.com` 引用（固定 commit）。插件代码 MIT，图片版权归各自来源
+GitHub media endpoint 引用（固定 commit）。插件代码 MIT，图片版权归各自来源
 （Giphy/Tenor/CC0），责任边界清晰。
 
 ## 路线图

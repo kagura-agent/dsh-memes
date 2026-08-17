@@ -17,6 +17,7 @@ import {
   TagsError,
   validateTags,
 } from "../src/network.js";
+import { createPickMemeTool } from "../src/tool.js";
 
 const FIXTURE_TAGS = {
   "facepalm/facepalm.gif": ["facepalm", "classic", "cringe"],
@@ -119,12 +120,17 @@ test("RAW_PREFIX pins a revision and uses media host (LFS-safe)", () => {
 
 // ---- network.js: validateTags ----
 
-test("validateTags: accepts valid array + string forms", () => {
+test("validateTags: accepts valid array, string, and structured forms", () => {
   const out = validateTags({
     "happy/a.gif": ["happy", "yay"],
     "sad/b.gif": "sad,crying",
+    "smug/c.gif": { tags: ["smug", "confident"], style: "illustration" },
   });
-  assert.deepEqual(out, { "happy/a.gif": ["happy", "yay"], "sad/b.gif": ["sad", "crying"] });
+  assert.deepEqual(out, {
+    "happy/a.gif": ["happy", "yay"],
+    "sad/b.gif": ["sad", "crying"],
+    "smug/c.gif": ["smug", "confident"],
+  });
 });
 
 test("validateTags: skips _meta/_styles, requires slash in key", () => {
@@ -274,10 +280,16 @@ test("store: refresh forces a new fetch", async () => {
 
 // ---- RAW_PREFIX + tool wiring smoke (tool.js imported via index) ----
 
-test("index.js loads and exports name/apply", async () => {
+test("index.js loads and exports name/inject/apply", async () => {
   const mod = await import("../src/index.js");
   assert.equal(mod.name, "dsh-memes");
+  assert.deepEqual(mod.inject, ["tools"]);
   assert.equal(typeof mod.apply, "function");
+});
+
+test("apply fails loudly without the tools service", async () => {
+  const mod = await import("../src/index.js");
+  assert.throws(() => mod.apply({ get: () => undefined }), /requires the tools service/);
 });
 
 // ---- Config must be a Schemastery schema (Standard Schema ~standard) ----
@@ -285,10 +297,9 @@ test("index.js loads and exports name/apply", async () => {
 // (vendor/cordis/src/fiber.ts resolveConfig). A plain object has no
 // `~standard`, so the plugin crashes before apply() ever runs.
 
-test("Config is a Schemastery schema exposing ~standard.validate", async () => {
+test("Config exposes ~standard.validate", async () => {
   const mod = await import("../src/index.js");
   assert.ok(mod.Config, "Config must be exported");
-  assert.equal(typeof mod.Config, "function", "must be a schema (z.object), not a plain object");
   assert.ok(mod.Config["~standard"], "schema must expose the Standard Schema ~standard protocol");
   assert.equal(typeof mod.Config["~standard"].validate, "function");
 });
@@ -313,4 +324,22 @@ test("Config validates: wrong type reports issues (does not throw)", async () =>
   assert.ok(result.issues, "expected validation issues");
   assert.ok(result.issues.length >= 1);
   assert.match(result.issues[0].message, /tagsUrl/);
+});
+
+test("tool declares DSH JSON Schemas and text content", async () => {
+  const tool = createPickMemeTool({
+    get: async () => FIXTURE_TAGS,
+  });
+  assert.equal(tool.parameters.type, "object");
+  assert.deepEqual(tool.parameters.required, ["mood"]);
+  assert.deepEqual(tool.output.schema.required, ["mood", "matches"]);
+
+  const value = await tool.execute({ mood: "facepalm", count: 1 });
+  assert.equal(tool.output.render({ mood: "facepalm" }, value)[0].kind, "text");
+});
+
+test("tool rejects invalid model arguments", async () => {
+  const tool = createPickMemeTool({ get: async () => FIXTURE_TAGS });
+  await assert.rejects(() => tool.execute({ mood: 42 }), /mood must be a string/);
+  await assert.rejects(() => tool.execute({ mood: "happy", count: Infinity }), /count must be a finite number/);
 });

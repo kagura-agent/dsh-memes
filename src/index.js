@@ -12,21 +12,37 @@
 import { createTagsStore } from "./network.js";
 import { createPickMemeTool } from "./tool.js";
 import { RAW_PREFIX } from "./match.js";
-import z from "@deepseek-ai/schemastery";
 
 export const name = "dsh-memes";
+export const inject = ["tools"];
 
 /**
  * Optional config: override the tags.json URL (mostly for testing/mirrors).
- * Must be a Schemastery schema (Standard Schema `~standard` protocol) —
- * Cordis calls Config['~standard'].validate(config) at load; a plain object
- * crashes the plugin before it ever runs.
+ * Cordis consumes the Standard Schema `~standard` protocol directly.
  */
-export const Config = z.object({ tagsUrl: z.string() });
+export const Config = {
+  "~standard": {
+    version: 1,
+    vendor: "dsh-memes",
+    validate(value) {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
+        return { issues: [{ message: "config must be an object" }] };
+      }
+      if (value.tagsUrl !== undefined && typeof value.tagsUrl !== "string") {
+        return { issues: [{ message: "tagsUrl must be a string", path: ["tagsUrl"] }] };
+      }
+      return {
+        value: value.tagsUrl === undefined ? {} : { tagsUrl: value.tagsUrl },
+      };
+    },
+  },
+};
 
 function apply(ctx, config = {}) {
   const tools = ctx.get("tools");
-  if (tools === void 0) return;
+  if (tools === void 0) {
+    throw new Error("dsh-memes requires the tools service");
+  }
 
   const store = createTagsStore(
     typeof config.tagsUrl === "string" && config.tagsUrl.length > 0

@@ -44,6 +44,8 @@ export function validateTags(json) {
       tags = value;
     } else if (typeof value === "string") {
       tags = value.split(",");
+    } else if (value !== null && typeof value === "object" && Array.isArray(value.tags)) {
+      tags = value.tags;
     } else {
       throw new TagsError(`tags.json: invalid tags for ${key}`);
     }

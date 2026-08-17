@@ -90,7 +90,7 @@ function runningBlock() {
 }
 
 test("client: module exposes name/inject/apply/MemeRow", () => {
-  assert.equal(client.name, "dsh-memes-client");
+  assert.equal(client.name, "dsh-memes");
   assert.deepEqual(client.inject, ["slots"]);
   assert.equal(typeof client.apply, "function");
   assert.equal(typeof client.MemeRow, "function");
@@ -147,10 +147,13 @@ test("MemeRow: settled call renders <img> with the meme URL", () => {
   assert.ok(html.includes("<img"), "renders an img tag");
   assert.ok(html.includes(MEDIA_URL), "img src is the media URL");
   assert.ok(html.includes("frieren-cringe.gif"), "alt carries the file name");
-  assert.ok(html.includes("1 meme matched"), "summary shows the count");
+  assert.ok(html.includes('aria-label="Meme reaction"'), "labels the reaction for assistive technology");
+  assert.ok(html.includes("width:fit-content"), "reaction container hugs the image content");
+  assert.ok(!html.includes("pick_meme"), "does not expose the tool name");
+  assert.ok(!html.includes("matched"), "does not expose matching internals");
 });
 
-test("MemeRow: multiple matches render a grid of imgs", () => {
+test("MemeRow: multiple matches render only reaction images", () => {
   const block = settledBlock({
     meta: {
       mood: "facepalm",
@@ -164,23 +167,23 @@ test("MemeRow: multiple matches render a grid of imgs", () => {
     React.createElement(MemeRow, { toolName: "pick_meme", block })
   );
   assert.equal((html.match(/<img/g) || []).length, 2);
-  assert.ok(html.includes("2 memes matched"));
+  assert.ok(!html.includes("pick_meme"));
+  assert.ok(!html.includes("matched"));
 });
 
-test("MemeRow: running call shows placeholder, no img", () => {
+test("MemeRow: running call stays visually silent", () => {
   const html = renderToStaticMarkup(
     React.createElement(MemeRow, { toolName: "pick_meme", block: runningBlock() })
   );
-  assert.ok(!html.includes("<img"), "no img while running");
-  assert.ok(html.includes("picking memes"), "shows picking placeholder");
+  assert.equal(html, "");
 });
 
-test("MemeRow: error result renders no img", () => {
+test("MemeRow: error result stays visually silent", () => {
   const block = settledBlock({ isError: true, meta: undefined, content: [] });
   const html = renderToStaticMarkup(
     React.createElement(MemeRow, { toolName: "pick_meme", block })
   );
-  assert.ok(!html.includes("<img"));
+  assert.equal(html, "");
 });
 
 // ---- apply() registers the keyed toolview ----

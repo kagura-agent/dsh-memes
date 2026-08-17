@@ -4,6 +4,18 @@
 
 import { CATEGORIES, matchMemes } from "./match.js";
 
+function validateArgs(args) {
+  if (args === null || typeof args !== "object" || Array.isArray(args)) {
+    throw new TypeError("pick_meme arguments must be an object");
+  }
+  if (typeof args.mood !== "string") {
+    throw new TypeError("pick_meme mood must be a string");
+  }
+  if (args.count !== undefined && (typeof args.count !== "number" || !Number.isFinite(args.count))) {
+    throw new TypeError("pick_meme count must be a finite number");
+  }
+}
+
 /**
  * Build the pick_meme tool definition.
  *
@@ -19,36 +31,39 @@ export function createPickMemeTool(tagsStore, rawPrefix) {
       + "Give the mood or situation (e.g. 'facepalm', 'proud', 'frieren cringe', 'morning greeting') "
       + "and get back candidate images with URLs. Categories: " + CATEGORIES.join(", ") + ".",
     parameters: {
-      mood: {
-        type: "string",
-        required: true,
-        description: "The emotion or situation the meme should express, in plain words.",
-      },
-      count: {
-        type: "number",
-        description: "How many candidates to return (default 3, max 10).",
+      type: "object",
+      additionalProperties: false,
+      required: ["mood"],
+      properties: {
+        mood: {
+          type: "string",
+          description: "The emotion or situation the meme should express, in plain words.",
+        },
+        count: {
+          type: "number",
+          description: "How many candidates to return (default 3, max 10).",
+        },
       },
     },
     output: {
       schema: {
         type: "object",
         additionalProperties: false,
-        required: true,
+        required: ["mood", "matches"],
         properties: {
-          mood: { type: "string", required: true },
+          mood: { type: "string" },
           matches: {
             type: "array",
-            required: true,
             items: {
               type: "object",
               additionalProperties: false,
-              required: true,
+              required: ["file", "category", "url", "matchedBy", "tags"],
               properties: {
-                file: { type: "string", required: true },
-                category: { type: "string", required: true },
-                url: { type: "string", required: true },
-                matchedBy: { type: "string", required: true },
-                tags: { type: "array", required: true, items: { type: "string" } },
+                file: { type: "string" },
+                category: { type: "string" },
+                url: { type: "string" },
+                matchedBy: { type: "string" },
+                tags: { type: "array", items: { type: "string" } },
               },
             },
           },
@@ -59,7 +74,7 @@ export function createPickMemeTool(tagsStore, rawPrefix) {
           `${i + 1}. [${m.category}] ${m.file}\n   ${m.url}`
         );
         return [{
-          type: "text",
+          kind: "text",
           text: `meme candidates for "${value.mood}" (matched by ${value.matches[0]?.matchedBy ?? "?"}):\n${lines.join("\n")}`,
         }];
       },
@@ -75,6 +90,7 @@ export function createPickMemeTool(tagsStore, rawPrefix) {
       },
     },
     async execute(args) {
+      validateArgs(args);
       const tags = await tagsStore.get();
       const matches = matchMemes(tags, args.mood, args.count, rawPrefix);
       return { mood: args.mood, matches };
