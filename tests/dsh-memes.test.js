@@ -53,6 +53,14 @@ test("matchMemes: exact category hit", () => {
   assert.ok(r[0].url.startsWith("https://media.githubusercontent.com/media/"));
 });
 
+test("matchMemes: semantic matches vary within the matched category", () => {
+  const first = matchMemes(FIXTURE_TAGS, "facepalm", 1, RAW_PREFIX, () => 0);
+  const second = matchMemes(FIXTURE_TAGS, "facepalm", 1, RAW_PREFIX, () => 0.999);
+  assert.notEqual(first[0].file, second[0].file);
+  assert.equal(first[0].matchedBy, "category");
+  assert.equal(second[0].matchedBy, "category");
+});
+
 test("matchMemes: multi-token tag hit (frieren cringe)", () => {
   const r = matchMemes(FIXTURE_TAGS, "frieren cringe", 2);
   assert.equal(r.length, 1);
@@ -283,13 +291,34 @@ test("store: refresh forces a new fetch", async () => {
 test("index.js loads and exports name/inject/apply", async () => {
   const mod = await import("../src/index.js");
   assert.equal(mod.name, "dsh-memes");
-  assert.deepEqual(mod.inject, ["tools"]);
+  assert.deepEqual(mod.inject, ["tools", "systemPrompt"]);
   assert.equal(typeof mod.apply, "function");
 });
 
-test("apply fails loudly without the tools service", async () => {
+test("apply fails loudly without its required services", async () => {
   const mod = await import("../src/index.js");
-  assert.throws(() => mod.apply({ get: () => undefined }), /requires the tools service/);
+  assert.throws(() => mod.apply({ get: () => undefined }), /requires the tools and systemPrompt services/);
+});
+
+test("apply registers restrained proactive meme guidance", async () => {
+  const mod = await import("../src/index.js");
+  let section;
+  const services = {
+    tools: { register: () => () => {} },
+    systemPrompt: { section: (value) => { section = value; return () => {}; } },
+  };
+  const ctx = {
+    get: (key) => services[key],
+    effect: (register) => register(),
+  };
+
+  mod.apply(ctx);
+  assert.equal(section.name, "tool:pick_meme");
+  assert.equal(section.order, 118);
+  assert.match(section.text, /without being asked for a meme/);
+  assert.match(section.text, /Do not use it every turn/);
+  assert.match(section.text, /instead of an answer that needs words/);
+  assert.match(section.text, /never repeat its URL or embed the same image in Markdown/);
 });
 
 // ---- Config must be a Schemastery schema (Standard Schema ~standard) ----
@@ -335,7 +364,11 @@ test("tool declares DSH JSON Schemas and text content", async () => {
   assert.deepEqual(tool.output.schema.required, ["mood", "matches"]);
 
   const value = await tool.execute({ mood: "facepalm", count: 1 });
-  assert.equal(tool.output.render({ mood: "facepalm" }, value)[0].kind, "text");
+  const block = tool.output.render({ mood: "facepalm" }, value)[0];
+  assert.equal(block.type, "text");
+  assert.ok(!("kind" in block), "Host ContentBlock uses type; Client normalization adds kind later");
+  assert.ok(!block.text.includes("https://"), "model-facing content does not expose image URLs");
+  assert.match(block.text, /displayed by the client/);
 });
 
 test("tool rejects invalid model arguments", async () => {

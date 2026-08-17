@@ -70,12 +70,9 @@ export function createPickMemeTool(tagsStore, rawPrefix) {
         },
       },
       render(args, value) {
-        const lines = value.matches.map((m, i) =>
-          `${i + 1}. [${m.category}] ${m.file}\n   ${m.url}`
-        );
         return [{
-          kind: "text",
-          text: `meme candidates for "${value.mood}" (matched by ${value.matches[0]?.matchedBy ?? "?"}):\n${lines.join("\n")}`,
+          type: "text",
+          text: `${value.matches.length} meme reaction${value.matches.length === 1 ? "" : "s"} for "${value.mood}" displayed by the client. Do not repeat image URLs or embed the images in Markdown.`,
         }];
       },
       /**

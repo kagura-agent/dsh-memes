@@ -111,6 +111,15 @@ export function tokenMatch(tags, category, query) {
   return tokens.every((t) => haystack.includes(t));
 }
 
+function shuffle(values, random) {
+  const shuffled = [...values];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
 /**
  * Pick top-N meme files for a mood. Pure: no network, no Date, no Math.random
  * except the random fallback. Returns { file, category, url, tags, matchedBy }.
@@ -119,8 +128,9 @@ export function tokenMatch(tags, category, query) {
  * @param {string} mood - emotion/situation in plain words.
  * @param {number} [count=3] - how many candidates, clamped to [1, 10].
  * @param {string} [baseUrl=RAW_PREFIX] - URL prefix for the image files.
+ * @param {() => number} [random=Math.random] - random source for candidate selection.
  */
-export function matchMemes(tags, mood, count = 3, baseUrl = RAW_PREFIX) {
+export function matchMemes(tags, mood, count = 3, baseUrl = RAW_PREFIX, random = Math.random) {
   const n = Math.max(1, Math.min(count || 3, 10));
   const q = normalize(mood);
   const alias = ALIASES[q];
@@ -140,16 +150,13 @@ export function matchMemes(tags, mood, count = 3, baseUrl = RAW_PREFIX) {
       .map((file) => ({ file, tags: tags[file], matchedBy: "tag" }));
   }
 
-  // 3) random fallback (deterministic-ish: first N of a shuffled sample)
+  // 3) random fallback
   if (scored.length === 0) {
-    const all = Object.keys(tags);
-    scored = all
-      .sort(() => Math.random() - 0.5)
-      .slice(0, n)
+    scored = Object.keys(tags)
       .map((file) => ({ file, tags: tags[file], matchedBy: "random" }));
   }
 
-  return scored.slice(0, n).map(({ file, tags: fileTags, matchedBy }) => ({
+  return shuffle(scored, random).slice(0, n).map(({ file, tags: fileTags, matchedBy }) => ({
     file,
     category: categoryOf(file),
     url: `${baseUrl}/${file}`,

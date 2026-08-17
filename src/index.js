@@ -14,7 +14,15 @@ import { createPickMemeTool } from "./tool.js";
 import { RAW_PREFIX } from "./match.js";
 
 export const name = "dsh-memes";
-export const inject = ["tools"];
+export const inject = ["tools", "systemPrompt"];
+
+export const MEME_GUIDANCE =
+  "Use pick_meme sparingly as a natural reaction when the conversation reaches a clear emotional beat, "
+  + "such as celebration, surprise, encouragement, disbelief, or shared frustration. You may use it without "
+  + "being asked for a meme when an image genuinely adds warmth or humor. Do not use it every turn, during "
+  + "serious or sensitive moments, or instead of an answer that needs words. When one reaction image is enough, "
+  + "call the tool without adding explanatory text. The client displays the selected image automatically; after "
+  + "the tool call, never repeat its URL or embed the same image in Markdown.";
 
 /**
  * Optional config: override the tags.json URL (mostly for testing/mirrors).
@@ -40,8 +48,9 @@ export const Config = {
 
 function apply(ctx, config = {}) {
   const tools = ctx.get("tools");
-  if (tools === void 0) {
-    throw new Error("dsh-memes requires the tools service");
+  const systemPrompt = ctx.get("systemPrompt");
+  if (tools === void 0 || systemPrompt === void 0) {
+    throw new Error("dsh-memes requires the tools and systemPrompt services");
   }
 
   const store = createTagsStore(
@@ -52,6 +61,11 @@ function apply(ctx, config = {}) {
   const tool = createPickMemeTool(store, RAW_PREFIX);
 
   ctx.effect(() => tools.register(tool), "dsh-memes: pick_meme");
+  ctx.effect(() => systemPrompt.section({
+    name: "tool:pick_meme",
+    order: 118,
+    text: MEME_GUIDANCE,
+  }), "dsh-memes: guidance");
 }
 
 export { apply };
