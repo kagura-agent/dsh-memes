@@ -1,0 +1,10 @@
+# dsh-memes bundle patch — auto-enables the meme picker on `dsh plugin add`.
+#
+# The `dsh.bundle.patch` field in package.json points here; installing the
+# package as a profile dependency joins this patch as one more profile layer,
+# so no manual cordis.patch.yml edit is needed.
+
+- insert:
+    - id: memes
+      name: 'dsh-memes'
+      config: {}
