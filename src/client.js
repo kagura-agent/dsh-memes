@@ -5,9 +5,18 @@
 // for the `pick_meme` wire tool name replaces that default with a component
 // that renders the returned GIFs directly as <img> tags.
 //
-// The host half returns media.githubusercontent.com URLs (the memes repo is
-// Git LFS; raw.githubusercontent.com serves the LFS pointer text, not the
-// image bytes), so <img src={url}> just works.
+// Data contract (DSH client runtime, packages/client/runtime):
+//   ToolCallBlock = RunningToolCall | ToolResultNode
+//   RunningToolCall = { callId, name, argsRaw, turn, step, time, ... }   // no `kind`
+//   ToolResultNode  = { kind: 'tool-result', content: ContentBlock[], meta?: unknown, ... }
+// The host half's `output.presentationMeta(args, value)` projects the
+// structured matches onto `meta` for top-level calls; `content` holds the
+// rendered text blocks (kind: 'text'). This view reads meta first, then
+// falls back to parsing text content (older payloads / nested calls).
+//
+// URL host: the memes repo is Git LFS, so URLs use
+// media.githubusercontent.com/media (raw.githubusercontent.com serves LFS
+// pointer text, not image bytes).
 
 window.__ModuleLoader__.load({
   id: "dsh-memes-client",
@@ -21,22 +30,74 @@ window.__ModuleLoader__.load({
 
     var NS = "dsh-memes";
 
-    /** Extract the settled tool result's matches array, any shape tolerated. */
-    function extractMatches(block) {
-      if (!block || typeof block !== "object") return [];
-      var result = block.result;
-      if (!result || typeof result !== "object") return [];
-      var value = result.value;
-      if (!value || typeof value !== "object") return [];
-      var matches = Array.isArray(value.matches) ? value.matches : [];
-      return matches.filter(function (m) {
-        return m && typeof m === "object" && typeof m.url === "string";
-      });
+    /** Settled iff the block is a ToolResultNode (carries `kind`). */
+    function isSettled(block) {
+      return Boolean(block && typeof block === "object" && block.kind === "tool-result");
     }
 
-    /** Is the node settled (has a result) vs still running? */
-    function isSettled(block) {
-      return Boolean(block && block.result);
+    /** Normalize one candidate entry; returns null when malformed. */
+    function normalizeMatch(m) {
+      if (!m || typeof m !== "object") return null;
+      if (typeof m.url !== "string" || m.url.length === 0) return null;
+      return {
+        url: m.url,
+        file: typeof m.file === "string" ? m.file : "",
+        category: typeof m.category === "string" ? m.category : "",
+        matchedBy: typeof m.matchedBy === "string" ? m.matchedBy : "",
+        tags: Array.isArray(m.tags) ? m.tags.filter(function (t) { return typeof t === "string"; }) : [],
+      };
+    }
+
+    /** Read matches from ToolResultNode.meta (presentationMeta projection). */
+    function matchesFromMeta(meta) {
+      if (!meta || typeof meta !== "object") return [];
+      var raw = Array.isArray(meta) ? meta : meta.matches;
+      if (!Array.isArray(raw)) return [];
+      var out = [];
+      for (var i = 0; i < raw.length; i += 1) {
+        var m = normalizeMatch(raw[i]);
+        if (m !== null) out.push(m);
+      }
+      return out;
+    }
+
+    /**
+     * Fallback: parse matches out of the settled content's text blocks. The
+     * host render() emits one text block per candidate ("N. [cat] file\n url"),
+     * so a client that receives no meta (nested calls, older data) can still
+     * recover the URLs. Best-effort; returns [] on any mismatch.
+     */
+    function matchesFromContent(content) {
+      if (!Array.isArray(content)) return [];
+      var out = [];
+      for (var i = 0; i < content.length; i += 1) {
+        var block = content[i];
+        if (!block || typeof block !== "object" || block.kind !== "text") continue;
+        if (typeof block.text !== "string") continue;
+        var lines = block.text.split("\n");
+        for (var j = 0; j < lines.length; j += 1) {
+          var line = lines[j].trim();
+          var urlMatch = line.match(/https?:\/\/[^\s]+/);
+          if (!urlMatch) continue;
+          var fileMatch = line.match(/\]\s*(\S+\.gif)/i);
+          out.push({
+            url: urlMatch[0],
+            file: fileMatch ? fileMatch[1] : "",
+            category: "",
+            matchedBy: "",
+            tags: [],
+          });
+        }
+      }
+      return out;
+    }
+
+    /** Extract the settled tool result's matches array (meta-first, content fallback). */
+    function extractMatches(block) {
+      if (!isSettled(block)) return [];
+      var fromMeta = matchesFromMeta(block.meta);
+      if (fromMeta.length > 0) return fromMeta;
+      return matchesFromContent(block.content);
     }
 
     /**
@@ -47,7 +108,6 @@ window.__ModuleLoader__.load({
     function MemeRow(props) {
       var toolName = props.toolName;
       var block = props.block;
-      var t = props.t;
 
       var matches = extractMatches(block);
       var settled = isSettled(block);
@@ -58,7 +118,7 @@ window.__ModuleLoader__.load({
         : "picking memes…";
 
       var children = [];
-      if (settled) {
+      if (settled && matches.length > 0) {
         var grid = react.createElement(
           "div",
           { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px", padding: "8px 0" } },
@@ -115,6 +175,10 @@ window.__ModuleLoader__.load({
     exports.name = name;
     exports.inject = inject;
     exports.apply = apply;
+    // Test hook: expose the view component for direct rendering tests. No
+    // runtime effect — DSH loads the plugin via apply(), not this export.
+    exports.MemeRow = MemeRow;
+    exports.extractMatches = extractMatches;
     return module.exports;
   },
 });

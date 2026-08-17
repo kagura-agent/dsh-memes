@@ -63,6 +63,16 @@ export function createPickMemeTool(tagsStore, rawPrefix) {
           text: `meme candidates for "${value.mood}" (matched by ${value.matches[0]?.matchedBy ?? "?"}):\n${lines.join("\n")}`,
         }];
       },
+      /**
+       * Structured presentation metadata projected onto ToolResultNode.meta
+       * for top-level calls. This is the channel the Web Client reads — the
+       * render() text block is for the model transcript, while meta carries
+       * the machine-readable matches (url/file/category/tags) for the
+       * pick_meme toolview.
+       */
+      presentationMeta(args, value) {
+        return { mood: value.mood, matches: value.matches };
+      },
     },
     async execute(args) {
       const tags = await tagsStore.get();

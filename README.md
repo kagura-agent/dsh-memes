@@ -3,7 +3,7 @@
 <p align="center">
   <strong>Meme plugin for DeepSeek Harness — 没有表情包的 agent 是没有灵魂的</strong><br/>
   <a href="https://badgen.net/badge/license/MIT/green"><img src="https://badgen.net/badge/license/MIT/green" alt="license" /></a>
-  <a href="https://badgen.net/badge/tests/26%20passing/green"><img src="https://badgen.net/badge/tests/26%20passing/green" alt="tests" /></a>
+  <a href="https://badgen.net/badge/tests/38%20passing/green"><img src="https://badgen.net/badge/tests/38%20passing/green" alt="tests" /></a>
 </p>
 
 给 DSH agent 一个 `pick_meme` 工具：当对话需要情绪表达时，agent 直接调用，从
@@ -45,6 +45,18 @@ pick_meme(mood: "frieren cringe")
 <img src={meme.url} alt={meme.file} />
 ```
 
+**数据契约（按 DSH client runtime 真实结构）：**
+
+```ts
+type ToolCallBlock = RunningToolCall | ToolResultNode
+// RunningToolCall = { callId, name, argsRaw, ... }          // running，无 kind
+// ToolResultNode  = { kind: 'tool-result', content, meta?, isError, ... }
+```
+
+- Host 的 `output.presentationMeta(args, value)` 把结构化 matches 投影到 `ToolResultNode.meta`（顶层调用时）
+- Client 先读 `block.meta`，缺失时 fallback 解析 `block.content` 的 text block（嵌套调用/旧数据）
+- 渲染测试用真实 React `renderToStaticMarkup` + 真实 DSH block 结构验证
+
 > ⚠️ **LFS 坑**：memes repo 的图片是 Git LFS 对象。`raw.githubusercontent.com` 返回的是
 > LFS 指针文本（`version https://git-lfs.github.com/spec/v1…`），不是图片字节；
 > `<img>` 会渲染成一坨指针。因此 URL 必须用 `media.githubusercontent.com/media/...`（固定 revision）。
@@ -62,12 +74,13 @@ pick_meme(mood: "frieren cringe")
 ```text
 src/
 ├── index.js      # 薄插件入口：注册 tool，注入 tags store
-├── tool.js       # pick_meme 工具定义（schema + render + execute）
+├── tool.js       # pick_meme 工具定义（schema + render + presentationMeta + execute）
 ├── match.js      # 纯函数匹配管线（alias → category → tag → random）
 ├── network.js    # 远程资源层：tags.json 获取 + 校验 + 缓存
 └── client.js     # Web Client：pick_meme 专用 Tool View（<img> 渲染）
 tests/
-└── dsh-memes.test.js   # 26 个测试，node:test 零依赖
+├── dsh-memes.test.js   # 26 个 host 测试（匹配/校验/缓存/超时/并发），node:test 零依赖
+└── client.test.js      # 12 个 client 测试（真实 React 渲染 + DSH block 结构），react 19
 ```
 
 ### 远程资源策略
