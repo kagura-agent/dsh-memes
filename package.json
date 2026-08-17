@@ -1,0 +1,22 @@
+{
+  "name": "dsh-memes",
+  "version": "0.1.0",
+  "description": "DSH plugin: meme/reaction picker for DeepSeek Harness agents. No memes, no soul. Picks the right reaction image from the kagura-agent/memes library at runtime — semantic tag matching over 26 categories.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT"
+}
